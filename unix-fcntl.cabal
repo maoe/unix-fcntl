@@ -1,0 +1,40 @@
+name: unix-fcntl
+version: 0.0.0
+synopsis: Comprehensive bindings to fcntl.h
+description: Comprehensive bindings to fcntl.h
+homepage: https://github.com/maoe/unix-fcntl
+license: BSD3
+license-file: LICENSE
+author: Mitsutoshi Aoe
+maintainer: Mitsutoshi Aoe <maoe@foldr.in>
+copyright: Copyright (C) 2015 Mitsutoshi Aoe
+category: System
+build-type: Simple
+cabal-version: >=1.10
+
+flag examples
+  default: False
+  manual: True
+
+library
+  exposed-modules: System.Posix.FileControl
+  -- other-modules:
+  -- other-extensions:
+  build-depends:
+      base >= 4.7 && < 4.8
+    , foreign-var >= 0.1 && < 0.2
+  hs-source-dirs: src
+  ghc-options: -Wall
+  default-language: Haskell2010
+
+executable record-lock
+  if !flag(examples)
+    buildable: False
+  main-is: record-lock.hs
+  hs-source-dirs: examples
+  build-depends:
+      base
+    , foreign-var
+    , unix
+    , unix-fcntl
+  default-language: Haskell2010
