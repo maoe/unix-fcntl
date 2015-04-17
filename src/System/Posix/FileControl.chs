@@ -56,6 +56,16 @@ fcntl fd cmd = case cmd of
   F_SETLKW flock ->
     fcntl_set_flock fd {# const F_SETLKW #} flock
 
+#if defined(_GNU_SOURCE)
+  -- Open description locks
+  F_OFD_GETLK ->
+    fcntl_get_flock fd {# const F_OFD_GETLK #}
+  F_OFD_SETLK flock ->
+    fcntl_set_flock fd {# const F_OFD_SETLK #} flock
+  F_OFD_SETLKW flock ->
+    fcntl_set_flock fd {# const F_OFD_SETLKW #} flock
+#endif
+
   -- Managing signals
   F_GETOWN ->
     fcntl_get_int fd {# const F_GETOWN #}
@@ -79,6 +89,13 @@ data Fcntl a where
   F_GETLK :: Fcntl Flock
   F_SETLK :: Flock -> Fcntl ()
   F_SETLKW :: Flock -> Fcntl ()
+
+#if defined(_GNU_SOURCE)
+  -- Open file description locks
+  F_OFD_GETLK :: Fcntl Flock
+  F_OFD_SETLK :: Flock -> Fcntl ()
+  F_OFD_SETLKW :: Flock -> Fcntl ()
+#endif
 
   -- Managing signals
   F_GETOWN :: Fcntl ProcessID
