@@ -31,13 +31,15 @@ module System.Posix.FileControl
   , pattern DN_DELETE
   , pattern DN_RENAME
   , pattern DN_ATTRIB
+#endif -- defined(_GNU_SOURCE)
 
-  , Seal
+#if defined(F_GET_SEALS)
+  , FileSeal
   , pattern F_SEAL_SEAL
   , pattern F_SEAL_SHRINK
   , pattern F_SEAL_GROW
   , pattern F_SEAL_WRITE
-#endif -- defined(_GNU_SOURCE)
+#endif -- defined(F_GET_SEALS)
   ) where
 import Control.Applicative
 import GHC.Conc (Signal)
@@ -124,7 +126,7 @@ fcntl fd cmd = case cmd of
   F_GETPIPE_SZ ->
     fcntl_get_int fd {# const F_GETPIPE_SZ #}
   F_SETPIPE_SZ size ->
-    fcntl_set_int_ fd {# const F_SETPIPE_SZ #} (fromIntegral size)
+    fcntl_set_int_ fd {# const F_SETPIPE_SZ #} size
 #endif -- defined(_GNU_SOURCE)
 
 #if defined(F_GET_SEALS)
@@ -445,27 +447,27 @@ _DN_ATTRIB = {# const DN_ATTRIB #}
 
 #if defined(F_GET_SEALS)
 
-newtype Seal = Seal CInt deriving Eq
+newtype FileSeal = FileSeal CInt deriving Eq
 
-pattern F_SEAL_SEAL :: Seal
-pattern F_SEAL_SEAL <- ((\(Seal n) -> n .&. _F_SEAL_SEAL > 0) -> True)
+pattern F_SEAL_SEAL :: FileSeal
+pattern F_SEAL_SEAL <- ((\(FileSeal n) -> n .&. _F_SEAL_SEAL > 0) -> True)
   where
-    F_SEAL_SEAL = Seal _F_SEAL_SEAL
+    F_SEAL_SEAL = FileSeal _F_SEAL_SEAL
 
-pattern F_SEAL_SHRINK :: Seal
-pattern F_SEAL_SHRINK <- ((\(Seal n) -> n .&. _F_SEAL_SHRINK > 0) -> True)
+pattern F_SEAL_SHRINK :: FileSeal
+pattern F_SEAL_SHRINK <- ((\(FileSeal n) -> n .&. _F_SEAL_SHRINK > 0) -> True)
   where
-    F_SEAL_SHRINK = Seal _F_SEAL_SHRINK
+    F_SEAL_SHRINK = FileSeal _F_SEAL_SHRINK
 
-pattern F_SEAL_GROW :: Seal
-pattern F_SEAL_GROW <- ((\(Seal n) -> n .&. _F_SEAL_GROW > 0) -> True)
+pattern F_SEAL_GROW :: FileSeal
+pattern F_SEAL_GROW <- ((\(FileSeal n) -> n .&. _F_SEAL_GROW > 0) -> True)
   where
-    F_SEAL_GROW = Seal _F_SEAL_GROW
+    F_SEAL_GROW = FileSeal _F_SEAL_GROW
 
-pattern F_SEAL_WRITE :: Seal
-pattern F_SEAL_WRITE <- ((\(Seal n) -> n .&. _F_SEAL_WRITE > 0) -> True)
+pattern F_SEAL_WRITE :: FileSeal
+pattern F_SEAL_WRITE <- ((\(FileSeal n) -> n .&. _F_SEAL_WRITE > 0) -> True)
   where
-    F_SEAL_WRITE = Seal _F_SEAL_WRITE
+    F_SEAL_WRITE = FileSeal _F_SEAL_WRITE
 
 _F_SEAL_SEAL :: CInt
 _F_SEAL_SEAL = {# const F_SEAL_SEAL #}
