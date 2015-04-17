@@ -72,6 +72,14 @@ fcntl fd cmd = case cmd of
   F_SETOWN pid ->
     fcntl_set_int_ fd {# const F_SETFL #} pid
 
+#if defined(F_GET_SEALS)
+  -- File sealing
+  F_GET_SEALS ->
+    fcntl_get_int fd {# const F_GET_SEALS #}
+  F_ADD_SEALS ->
+    fcntl_set_int_ fd {# const F_ADD_SEALS #}
+#endif -- defined(F_GET_SEALS)
+
 data Fcntl a where
   -- Duplicating a file descriptor
   F_DUPFD :: Fd -> Fcntl Fd
@@ -115,6 +123,12 @@ data Fcntl a where
   -- Changing the capacity of a pipe
   -- F_SETPIPE_SZ :: Int -> Fcntl ()
   -- F_GETPIPE_SZ :: Fcntl Int
+
+#if defined(F_GET_SEALS)
+  -- File sealing (Linux 3.17)
+  F_GET_SEALS :: Fcntl Seal
+  F_ADD_SEALS :: Seal -> Fcntl ()
+#endif -- defined(F_GET_SEALS)
 
 fcntl_get_int :: Integral a => Fd -> CInt -> IO a
 fcntl_get_int fd cmd =
@@ -251,3 +265,44 @@ flockPid flock = Var get set
     get = fromIntegral <$> withFlock flock {# get flock.l_pid #}
     set ty = withFlock flock $ \p ->
       {# set flock.l_pid #} p (fromIntegral ty)
+
+-----------------------------------------------------------
+-- File sealing
+
+#if defined(F_GET_SEALS)
+
+newtype Seal = Seal CInt deriving Eq
+
+pattern F_SEAL_SEAL :: Seal
+pattern F_SEAL_SEAL <- ((\(Seal n) -> n .&. _F_SEAL_SEAL > 0) -> True)
+  where
+    F_SEAL_SEAL = Seal _F_SEAL_SEAL
+
+pattern F_SEAL_SHRINK :: Seal
+pattern F_SEAL_SHRINK <- ((\(Seal n) -> n .&. _F_SEAL_SHRINK > 0) -> True)
+  where
+    F_SEAL_SHRINK = Seal _F_SEAL_SHRINK
+
+pattern F_SEAL_GROW :: Seal
+pattern F_SEAL_GROW <- ((\(Seal n) -> n .&. _F_SEAL_GROW > 0) -> True)
+  where
+    F_SEAL_GROW = Seal _F_SEAL_GROW
+
+pattern F_SEAL_WRITE :: Seal
+pattern F_SEAL_WRITE <- ((\(Seal n) -> n .&. _F_SEAL_WRITE > 0) -> True)
+  where
+    F_SEAL_WRITE = Seal _F_SEAL_WRITE
+
+_F_SEAL_SEAL :: CInt
+_F_SEAL_SEAL = {# const F_SEAL_SEAL #}
+
+_F_SEAL_SHRINK :: CInt
+_F_SEAL_SHRINK = {# const F_SEAL_SHRINK #}
+
+_F_SEAL_GROW :: CInt
+_F_SEAL_GROW = {# const F_SEAL_GROW #}
+
+_F_SEAL_WRITE :: CInt
+_F_SEAL_WRITE = {# const F_SEAL_WRITE #}
+
+#endif -- defined(F_GET_SEALS)
