@@ -1,4 +1,6 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 module System.Posix.FileControl
   ( fcntl
   , Fcntl(..)
@@ -16,6 +18,7 @@ module System.Posix.FileControl
   , flockPid
   ) where
 import Control.Applicative
+import GHC.Conc (Signal)
 import Foreign
 import Foreign.C
 import System.Posix.Types
@@ -26,6 +29,10 @@ import Foreign.Var hiding (get)
 #include <fcntl.h>
 
 {# pointer *flock as ^ foreign newtype #}
+
+#if defined(_GNU_SOURCE)
+{# pointer *f_owner_ex as ^ foreign newtype #}
+#endif -- defined(_GNU_SOURCE)
 
 -- | Perform one of the operations in 'Fcntl'
 fcntl :: Fd -> Fcntl a -> IO a
@@ -71,6 +78,26 @@ fcntl fd cmd = case cmd of
     fcntl_get_int fd {# const F_GETOWN #}
   F_SETOWN pid ->
     fcntl_set_int_ fd {# const F_SETFL #} pid
+#if defined(_GNU_SOURCE)
+  F_GETOWN_EX ->
+    fcntl_get_f_owner_ex fd {# const F_GETOWN_EX #}
+  F_SETOWN_EX foe ->
+    fcntl_set_f_owner_ex fd {# const F_SETOWN_EX #} foe
+  F_GETSIG ->
+    fcntl_get_int fd {# const F_GETSIG #}
+  F_SETSIG sig ->
+    fcntl_set_int_ fd {# const F_SETSIG #} sig
+
+  -- Leases (Linux 2.4)
+  F_GETLEASE ->
+    toEnum <$> fcntl_get_int fd {# const F_GETLEASE #}
+  F_SETLEASE ty ->
+    fcntl_set_int_ fd {# const F_SETLEASE #} (fromEnum ty)
+
+  -- File and directory change notification (dnotify; Linux 2.4)
+  F_NOTIFY (DNotify n) ->
+    fcntl_set_int_ fd {# const F_NOTIFY #} n
+#endif -- defined(_GNU_SOURCE)
 
 #if defined(F_GET_SEALS)
   -- File sealing
@@ -103,26 +130,32 @@ data Fcntl a where
   F_OFD_GETLK :: Fcntl Flock
   F_OFD_SETLK :: Flock -> Fcntl ()
   F_OFD_SETLKW :: Flock -> Fcntl ()
-#endif
+#endif -- defined(_GNU_SOURCE)
 
   -- Managing signals
   F_GETOWN :: Fcntl ProcessID
   F_SETOWN :: ProcessID -> Fcntl ()
-  -- F_GETOWN_EX ::
-  -- F_SETOWN_EX ::
-  -- F_GETSIG :: Fcntl Signal
-  -- F_SETSIG :: Signal -> Fcntl ()
+
+#if defined(_GNU_SOURCE)
+  F_GETOWN_EX :: Fcntl FOwnerEx
+  F_SETOWN_EX :: FOwnerEx -> Fcntl ()
+
+  F_GETSIG :: Fcntl Signal
+  F_SETSIG :: Signal -> Fcntl ()
 
   -- Leases
-  -- F_GETLEASE :: Fcntl FlockType
-  -- F_SETLEASE :: FlockType -> Fcntl ()
+  F_GETLEASE :: Fcntl FlockType
+  F_SETLEASE :: FlockType -> Fcntl ()
 
-  -- File and directory change notification (dnotify)
-  -- F_NOTIFY ::
+  -- File and directory change notification (dnotify; Linux 2.4)
+#if defined(F_NOTIFY)
+  F_NOTIFY :: DNotify -> Fcntl ()
+#endif -- defined(F_NOTIFY)
 
   -- Changing the capacity of a pipe
-  -- F_SETPIPE_SZ :: Int -> Fcntl ()
-  -- F_GETPIPE_SZ :: Fcntl Int
+  F_GETPIPE_SZ :: Fcntl Int
+  F_SETPIPE_SZ :: Int -> Fcntl ()
+#endif -- defined(_GNU_SOURCE)
 
 #if defined(F_GET_SEALS)
   -- File sealing (Linux 3.17)
@@ -179,6 +212,32 @@ fcntl_set_flock fd cmd =
   , `Flock'
   } -> `CInt'
   #}
+
+#if defined(_GNU_SOURCE)
+fcntl_get_f_owner_ex :: Fd -> CInt -> IO FOwnerEx
+fcntl_get_f_owner_ex fd cmd = do
+  owner <- newFOwnerEx
+  throwErrnoIfMinus1_ "fcntl" $ c_fcntl_get_f_owner_ex fd cmd owner
+  return owner
+
+{# fun variadic fcntl[struct f_owner_ex *] as c_fcntl_get_f_owner_ex
+  { fromIntegral `Fd'
+  , `CInt'
+  , `FOwnerEx'
+  } -> `CInt'
+  #}
+
+fcntl_set_f_owner_ex :: Fd -> CInt -> FOwnerEx -> IO ()
+fcntl_set_f_owner_ex fd cmd =
+  throwErrnoIfMinus1_ "fcntl" . c_fcntl_set_f_owner_ex fd cmd
+
+{# fun variadic fcntl[struct f_owner_ex *] as c_fcntl_set_f_owner_ex
+  { fromIntegral `Fd'
+  , `CInt'
+  , `FOwnerEx'
+  } -> `CInt'
+  #}
+#endif -- defined(_GNU_SOURCE)
 
 -----------------------------------------------------------
 -- File descriptor flags
@@ -265,6 +324,93 @@ flockPid flock = Var get set
     get = fromIntegral <$> withFlock flock {# get flock.l_pid #}
     set ty = withFlock flock $ \p ->
       {# set flock.l_pid #} p (fromIntegral ty)
+
+-----------------------------------------------------------
+-- Managing signals
+
+#if defined(_GNU_SOURCE)
+
+newFOwnerEx :: IO FOwnerEx
+newFOwnerEx = FOwnerEx <$> mallocForeignPtrBytes {# sizeof f_owner_ex #}
+
+{# enum define OwnerType
+  { F_OWNER_TID as F_OWNER_TID
+  , F_OWNER_PID as F_OWNER_PID
+  , F_OWNER_PGRP as F_OWNER_PGRP
+  } deriving (Eq, Show)
+  #}
+
+fOwnerExType :: FOwnerEx -> Var OwnerType
+fOwnerExType foe = Var get set
+  where
+    get = toEnum . fromIntegral <$> withFOwnerEx foe {# get f_owner_ex.type #}
+    set ty = withFOwnerEx foe $ \p ->
+      {# set f_owner_ex.type #} p (fromIntegral $ fromEnum ty)
+
+fOwnerExPid :: FOwnerEx -> Var ProcessID
+fOwnerExPid foe = Var get set
+  where
+    get = fromIntegral <$> withFOwnerEx foe {# get f_owner_ex.pid #}
+    set ty = withFOwnerEx foe $ \p ->
+      {# set f_owner_ex.pid #} p (fromIntegral ty)
+
+#endif -- defined(_GNU_SOURCE)
+-----------------------------------------------------------
+-- File and directory change notification (dnotify)
+
+#if defined(DN_ACCESS)
+
+newtype DNotify = DNotify CInt deriving Eq
+
+pattern DN_ACCESS :: DNotify
+pattern DN_ACCESS <- ((\(DNotify n) -> n .&. _DN_ACCESS > 0) -> True)
+  where
+    DN_ACCESS = DNotify _DN_ACCESS
+
+pattern DN_MODIFY :: DNotify
+pattern DN_MODIFY <- ((\(DNotify n) -> n .&. _DN_MODIFY > 0) -> True)
+  where
+    DN_MODIFY = DNotify _DN_MODIFY
+
+pattern DN_CREATE :: DNotify
+pattern DN_CREATE <- ((\(DNotify n) -> n .&. _DN_CREATE > 0) -> True)
+  where
+    DN_CREATE = DNotify _DN_CREATE
+
+pattern DN_DELETE :: DNotify
+pattern DN_DELETE <- ((\(DNotify n) -> n .&. _DN_DELETE > 0) -> True)
+  where
+    DN_DELETE = DNotify _DN_DELETE
+
+pattern DN_RENAME :: DNotify
+pattern DN_RENAME <- ((\(DNotify n) -> n .&. _DN_RENAME > 0) -> True)
+  where
+    DN_RENAME = DNotify _DN_RENAME
+
+pattern DN_ATTRIB :: DNotify
+pattern DN_ATTRIB <- ((\(DNotify n) -> n .&. _DN_ATTRIB > 0) -> True)
+  where
+    DN_ATTRIB = DNotify _DN_ATTRIB
+
+_DN_ACCESS :: CInt
+_DN_ACCESS = {# const DN_ACCESS #}
+
+_DN_MODIFY :: CInt
+_DN_MODIFY = {# const DN_MODIFY #}
+
+_DN_CREATE :: CInt
+_DN_CREATE = {# const DN_CREATE #}
+
+_DN_DELETE :: CInt
+_DN_DELETE = {# const DN_DELETE #}
+
+_DN_RENAME :: CInt
+_DN_RENAME = {# const DN_RENAME #}
+
+_DN_ATTRIB :: CInt
+_DN_ATTRIB = {# const DN_ATTRIB #}
+
+#endif -- defined(DN_ACCESS)
 
 -----------------------------------------------------------
 -- File sealing
