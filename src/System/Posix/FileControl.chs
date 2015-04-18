@@ -97,6 +97,12 @@ fcntl fd cmd = case cmd of
   -- File and directory change notification (dnotify; Linux 2.4)
   F_NOTIFY (DNotify n) ->
     fcntl_set_int_ fd {# const F_NOTIFY #} n
+
+  -- Changing the capacity of a pipe
+  F_GETPIPE_SZ ->
+    fcntl_get_int fd {# const F_GETPIPE_SZ #}
+  F_SETPIPE_SZ size ->
+    fcntl_set_int_ fd {# const F_SETPIPE_SZ #} (fromIntegral size)
 #endif -- defined(_GNU_SOURCE)
 
 #if defined(F_GET_SEALS)
