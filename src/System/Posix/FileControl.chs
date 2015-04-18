@@ -16,6 +16,28 @@ module System.Posix.FileControl
   , flockStart
   , flockLen
   , flockPid
+
+#if defined(_GNU_SOURCE)
+  , FOwnerEx
+  , newFOwnerEx
+  , fOwnerExType
+  , fOwnerExPid
+  , OwnerType(..)
+
+  , DNotify
+  , pattern DN_ACCESS
+  , pattern DN_MODIFY
+  , pattern DN_CREATE
+  , pattern DN_DELETE
+  , pattern DN_RENAME
+  , pattern DN_ATTRIB
+
+  , Seal
+  , pattern F_SEAL_SEAL
+  , pattern F_SEAL_SHRINK
+  , pattern F_SEAL_GROW
+  , pattern F_SEAL_WRITE
+#endif -- defined(_GNU_SOURCE)
   ) where
 import Control.Applicative
 import GHC.Conc (Signal)
