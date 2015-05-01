@@ -88,7 +88,7 @@ fcntl fd cmd = case cmd of
   F_SETLKW flock ->
     fcntl_set_flock fd {# const F_SETLKW #} flock
 
-#if defined(_GNU_SOURCE)
+#if defined(_GNU_SOURCE) && defined(F_OFD_GETLK)
   -- Open description locks
   F_OFD_GETLK ->
     fcntl_get_flock fd {# const F_OFD_GETLK #}
@@ -156,7 +156,7 @@ data Fcntl a where
   F_SETLK :: Flock -> Fcntl ()
   F_SETLKW :: Flock -> Fcntl ()
 
-#if defined(_GNU_SOURCE)
+#if defined(_GNU_SOURCE) && defined(F_OFD_GETLK)
   -- Open file description locks
   F_OFD_GETLK :: Fcntl Flock
   F_OFD_SETLK :: Flock -> Fcntl ()
