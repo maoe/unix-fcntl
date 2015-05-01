@@ -46,6 +46,7 @@ import GHC.Conc (Signal)
 import Foreign
 import Foreign.C
 import System.Posix.Types
+import Prelude
 
 import Foreign.Var hiding (get)
 
