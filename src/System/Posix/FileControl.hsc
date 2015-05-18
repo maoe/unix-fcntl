@@ -163,6 +163,65 @@ fcntl fd cmd = case cmd of
     fcntl_set_int_ fd (#const F_ADD_SEALS)
 #endif
 
+-- | Type of operations which 'fcntl' can perform. Available operations vary
+-- depending on platforms. Please consult manpage on your platform for details.
+--
+-- All possible operations are:
+--
+-- * Duplicating a file descriptor
+--
+--     * 'F_DUPFD'
+--     * 'F_DUPFD_CLOEXEC'
+--
+-- * File descriptor flags
+--
+--     * 'F_GETFD':
+--     * 'F_SETFD'
+--
+-- * File status flags
+--
+--    * 'F_GETFL'
+--    * 'F_SETFL'
+--
+-- * Advisory or mandatory locking
+--
+--    * 'F_GETLK'
+--    * 'F_SETLK'
+--    * 'F_SETLKW'
+--
+-- * Open file description locks (Linux 3.15 or later)
+--
+--    * 'F_OFD_GETLK'
+--    * 'F_OFD_SETLK'
+--    * 'F_OFD_SETLKW'
+--
+-- * Managing signals
+--
+--    * 'F_GETOWN'
+--    * 'F_SETOWN'
+--    * 'F_GETOWN_EX'
+--    * 'F_SETOWN_EX'
+--    * 'F_GETSIG'
+--    * 'F_SETSIG'
+--
+-- * Leases
+--
+--    * 'F_GETLEASE'
+--    * 'F_SETLEASE'
+--
+-- * File and directory change notification (dnotify; Linux 2.4 or later)
+--
+--    * 'F_NOTIFY'
+--
+-- * Changing the capacity of a pipe
+--
+--    * 'F_GETPIPE_SZ'
+--    * 'F_SETPIPE_SZ'
+--
+-- * File leasing
+--
+--    * 'F_GET_SEALS'
+--    * 'F_ADD_SEALS'
 data Fcntl a where
   -- Duplicating a file descriptor
   F_DUPFD :: Fd -> Fcntl Fd
