@@ -189,7 +189,9 @@ fcntl fd cmd = case cmd of
 --    * 'F_SETLK'
 --    * 'F_SETLKW'
 --
--- * Open file description locks (Linux 3.15 or later)
+-- * Open file description locks (Linux 3.15 or later).
+--
+--    @-fgnu@ flag needs to be enabled to use this feature.
 --
 --    * 'F_OFD_GETLK'
 --    * 'F_OFD_SETLK'

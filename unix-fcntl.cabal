@@ -16,6 +16,11 @@ flag examples
   default: False
   manual: True
 
+flag gnu
+  description: Define _GNU_SOURCE before including @fcntl.h@.
+  default: False
+  manual: False
+
 library
   exposed-modules: System.Posix.FileControl
   -- other-modules:
@@ -27,8 +32,8 @@ library
   include-dirs: include
   ghc-options: -Wall
   default-language: Haskell2010
-  if os(linux)
-    cpp-options: -D_GNU_SOURCE
+  if flag(gnu) && os(linux)
+    cc-options: -D_GNU_SOURCE
 
 executable record-lock
   if !flag(examples)
