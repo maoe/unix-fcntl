@@ -72,13 +72,16 @@ module System.Posix.FileControl
 #endif
   ) where
 import Control.Applicative
-import GHC.Conc (Signal)
 import Foreign
 import Foreign.C
 import System.Posix.Types
 import Prelude
 
 import Foreign.Var hiding (get)
+
+#if defined(_GNU_SOURCE)
+import GHC.Conc (Signal)
+#endif
 
 #include <unistd.h>
 #include <fcntl.h>
