@@ -7,5 +7,19 @@ before_install:
 install:
 - HALCYON_GHC_VERSION=7.10.1 HALCYON_CABAL_VERSION=1.22.4.0 halcyon install
 
+script:
+- cabal check
+# tests that a source-distribution can be generated
+- cabal sdist
+# check that the generated source-distribution can be built & installed
+- export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
+  cd dist/;
+  if [ -f "$SRC_TGZ" ]; then
+    cabal install --force-reinstalls "$SRC_TGZ";
+  else
+    echo "expected '$SRC_TGZ' not found";
+    exit 1;
+  fi
+
 notifications:
   email: false
