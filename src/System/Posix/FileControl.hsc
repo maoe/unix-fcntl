@@ -64,7 +64,7 @@ module System.Posix.FileControl
 
 #if defined(F_GET_SEALS)
   -- * File sealing
-  , FileSeal
+  , Seal
   , pattern F_SEAL_SEAL
   , pattern F_SEAL_SHRINK
   , pattern F_SEAL_GROW
@@ -161,9 +161,9 @@ fcntl fd cmd = case cmd of
 #if defined(F_GET_SEALS)
   -- File sealing
   F_GET_SEALS ->
-    fcntl_get_int fd (#const F_GET_SEALS)
-  F_ADD_SEALS ->
-    fcntl_set_int_ fd (#const F_ADD_SEALS)
+    Seal <$> fcntl_get_int fd (#const F_GET_SEALS)
+  F_ADD_SEALS (Seal x) ->
+    fcntl_set_int_ fd (#const F_ADD_SEALS) x
 #endif
 
 -- | Type of operations which 'fcntl' can perform. Available operations vary
@@ -487,11 +487,11 @@ newtype DNotify = DNotify CInt
 
 #if defined(F_GET_SEALS)
 
-newtype FileSeal = FileSeal CInt
+newtype Seal = Seal CInt
 
-#DEFINE_BIDIRECTIONAL_PATTERN "F_SEAL_SEAL", "FileSeal"
-#DEFINE_BIDIRECTIONAL_PATTERN "F_SEAL_SHRINK", "FileSeal"
-#DEFINE_BIDIRECTIONAL_PATTERN "F_SEAL_GROW", "FileSeal"
-#DEFINE_BIDIRECTIONAL_PATTERN "F_SEAL_WRITE", "FileSeal"
+#DEFINE_BIDIRECTIONAL_PATTERN "F_SEAL_SEAL", "Seal"
+#DEFINE_BIDIRECTIONAL_PATTERN "F_SEAL_SHRINK", "Seal"
+#DEFINE_BIDIRECTIONAL_PATTERN "F_SEAL_GROW", "Seal"
+#DEFINE_BIDIRECTIONAL_PATTERN "F_SEAL_WRITE", "Seal"
 
 #endif
